@@ -2,25 +2,25 @@
 
 
 ################################################################################
-#                                                                              #
-# Copyright 2013: Acebulf, alexames, PixelOrange, Snorrrlax, vaetrus, yaworsw  #
-#                 and the moderators of http://www.reddit.com/r/changemyview   #
-#                                                                              #
-# This file is part of Deltabot sourcecode.                                    #
-#                                                                              #
-# Deltabot is free software: you can redistribute it and/or modify             #
-# it under the terms of the GNU General Public License as published by         #
-# the Free Software Foundation, either version 3 of the License, or            #
-# (at your option) any later version.                                          #
-#                                                                              #
-# Deltabot is distributed in the hope that it will be useful,                  #
-# but WITHOUT ANY WARRANTY; without even the implied warranty of               #
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the                #
-# GNU General Public License for more details.                                 #
-#                                                                              #
-# You should have received a copy of the GNU General Public License            #
-# along with Deltabot.  If not, see <http://www.gnu.org/licenses/>.            #
-#                                                                              #
+# #
+# Copyright 2013: Acebulf, alexames, PixelOrange, Snorrrlax, vaetrus, yaworsw #
+# and the moderators of http://www.reddit.com/r/changemyview #
+# #
+# This file is part of Deltabot sourcecode. #
+# #
+# Deltabot is free software: you can redistribute it and/or modify #
+# it under the terms of the GNU General Public License as published by #
+# the Free Software Foundation, either version 3 of the License, or #
+# (at your option) any later version. #
+# #
+# Deltabot is distributed in the hope that it will be useful, #
+# but WITHOUT ANY WARRANTY; without even the implied warranty of #
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the #
+# GNU General Public License for more details. #
+# #
+# You should have received a copy of the GNU General Public License #
+# along with Deltabot. If not, see <http://www.gnu.org/licenses/>. #
+# #
 ################################################################################
 
 
@@ -58,12 +58,12 @@ def flair_sorter(dic):
 
 def skippable_line(line):
     """ Returns true if the given line is a quote or code """
-    return re.search('(^    |^ *&gt;)', line) != None
+    return re.search('(^ |^ *&gt;)', line) != None
 
 
 def str_contains_token(text, tokens):
     """ Returns true if a given string contains one of the given tokens, as long
-    as the token is not inside a quote or code block """
+as the token is not inside a quote or code block """
     lines = text.split('\n')
     in_quote = False
     for line in lines:
@@ -126,32 +126,31 @@ def scoreboard_to_markdown(scoreboard):
 
 
 class DeltaBot(object):
-    def __init__(self, config, test=False, test_reddit=None, test_recent=None):
+    def __init__(self, config, test=False, test_reddit=None, test_before=None):
         self.config = config
 
         if test:
             self.reddit = test_reddit
-            most_recent_comment_id = test_recent
+            before_id = test_before
             self.reddit.login(*[self.config.test_account['username'],
                                 self.config.test_account['password']])
-
         else:
+            logging.info('connecting to reddit')
             self.reddit = praw.Reddit(self.config.subreddit + ' bot',
                                       site_name=config.site_name)
-            most_recent_comment_id = read_saved_id(self.config.last_comment_filename)
+            before_id = read_saved_id(self.config.last_comment_filename)
             self.reddit.login(*[self.config.account['username'],
                                 self.config.account['password']])
-            logging.info('Connecting to reddit')
-
 
         self.subreddit = self.reddit.get_subreddit(self.config.subreddit)
-        logging.info("Logged in as %s" % self.config.account['username'])
         self.comment_id_regex = '(?:http://)?(?:www\.)?reddit\.com/r(?:eddit)?/' + \
                                 self.config.subreddit + '/comments/[\d\w]+(?:/[^/]+)/?([\d\w]+)'
-        self.scanned_comments = collections.deque([], 10)
+        self.before = collections.deque([], 10)
+###	self.record_of_current_submissions=[]
+###	self.number_of_deltas_in_each_submission={}
 
-        if most_recent_comment_id:
-            self.scanned_comments.append(most_recent_comment_id)
+        if before_id:
+            self.before.append(before_id)
         self.changes_made = False
         longest = 0
         for token in self.config.tokens:
@@ -169,7 +168,7 @@ class DeltaBot(object):
 
     def get_message(self, message_key):
         """ Given a type of message select one of the messages from the
-        configuration at random. """
+configuration at random. """
         messages = self.config.messages[message_key]
         return choice(messages) + self.config.messages['append_to_all_messages']
 
@@ -190,6 +189,10 @@ class DeltaBot(object):
         self.adjust_point_flair(awardee)
         self.update_monthly_scoreboard(awardee, comment)
         self.update_wiki_tracker(comment)
+###	if comment.link_id not in self.record_of_current_submissions:
+###		self.record_of_current_submissions.append(r.get_submission(submission_id=comment.link_id))
+###		self.number_of_deltas_in_each_submission[comment.link_id]=0
+###	self.number_of_deltas_in_each_submission[comment.link_id]+=1
 
 
     def get_this_months_scoreboard(self, date):
@@ -222,7 +225,7 @@ class DeltaBot(object):
                                    "Updating monthly scoreboard")
 
 
-    def adjust_point_flair(self, redditor, num_points=1):
+    def self.record_of_current_submissions(self, redditor, num_points=1):
         """ Recalculate a user's score and update flair. """
         self.changes_made = True
 
@@ -282,7 +285,7 @@ class DeltaBot(object):
 
     def points_already_awarded_to_ancestor(self, comment, parent):
         """ Returns true if a point was awarded by the comment's author already
-        in this branch of the comment tree """
+in this branch of the comment tree """
         awarder = comment.author
         awardee = parent.author
         while not comment.is_root:
@@ -305,8 +308,8 @@ class DeltaBot(object):
                      check_points_already_awarded_to_ancestor,
                      strict=True):
         logging.info("Scanning comment reddit.com/r/%s/comments/%s/c/%s by %s" %
-                    (self.config.subreddit, comment.submission.id, comment.id,
-                    comment.author.name if comment.author else "[deleted]"))
+                      (self.config.subreddit, comment.submission.id, comment.id,
+                       comment.author.name if comment.author else "[deleted]"))
 
         # Logs describing the output will be returned so they can be used for testing
         log = ""
@@ -317,7 +320,7 @@ class DeltaBot(object):
             parent_author = str(parent.author.name).lower()
             me = self.config.account['username'].lower()
             if parent_author == me:
-                log = "No points awarded, replying to DeltaBot"
+                log="No points awarded, replying to DeltaBot"
 
             elif check_already_replied(comment):
                 log = "No points awarded, already replied"
@@ -345,14 +348,13 @@ class DeltaBot(object):
 
 
     # Wrapper function to keep side effects out of scan_comments
-    def scan_comment_wrapper(self, comment, strict=True):
+    def scan_comment_wrapper(self, comment):
         parent = self.reddit.get_info(thing_id=comment.parent_id)
 
         log, message, awardee = self.scan_comment(comment, parent,
                                                   self.already_replied,
                                                   self.is_parent_commenter_author,
-                                                  self.points_already_awarded_to_ancestor,
-                                                  strict)
+                                                  self.points_already_awarded_to_ancestor)
         logging.info(log)
 
         if message:
@@ -361,33 +363,28 @@ class DeltaBot(object):
         if awardee:
             self.award_points(awardee, comment)
 
-    def get_most_recent_comment(self):
-        """Finds the most recently scanned comment,
-        so we know where to begin the next scan"""
 
-        most_recent_comment_id = None
-        while self.scanned_comments:
-            comment = self.reddit.get_info(thing_id=self.scanned_comments[-1])
-            if comment.body == '[deleted]':
-                self.scanned_comments.pop()
-            else:
-                most_recent_comment_id = self.scanned_comments[-1]
-                break
-
-        return most_recent_comment_id
 
     def scan_comments(self):
         """ Scan a given list of comments for tokens. If a token is found,
-        award points. """
+award points. """
         logging.info("Scanning new comments")
 
-        fresh_comments = self.subreddit.get_comments(params={'before': self.get_most_recent_comment()},
-                                                    limit=None)
+        before_id = None
+        while self.before:
+            comment = self.reddit.get_info(thing_id=self.before[-1])
+            if comment.body == '[deleted]':
+                self.before.pop()
+            else:
+                before_id = self.before[-1]
+                break
 
-        for comment in fresh_comments:
+        for comment in self.subreddit.get_comments(params={'before': before_id},
+                                                   limit=None):
+
             self.scan_comment_wrapper(comment)
-            if not self.scanned_comments or comment.name > self.scanned_comments[-1]:
-                self.scanned_comments.append(comment.name)
+            if not self.before or comment.name > self.before[-1]:
+                self.before.append(comment.name)
 
 
     def command_add(self, message_body, strict):
@@ -395,7 +392,7 @@ class DeltaBot(object):
         for id in ids:
             comment = self.reddit.get_info(thing_id='t1_%s' % id)
             if type(comment) is praw.objects.Comment:
-                self.scan_comment_wrapper(comment, strict=strict)
+                self.scan_comment(comment, strict=strict)
 
 
     def is_moderator(self, name):
@@ -418,10 +415,6 @@ class DeltaBot(object):
             if command == "add" or command == "force add":
                 strict = (command != "force add")
                 self.command_add(message.body, strict)
-                self.reddit.send_message(message.author,
-                                         "Add complete",
-                                         "The add command has been "
-                                         "completed on: " + message.body)
 
             elif command == "remove":
                 # Todo
@@ -431,7 +424,7 @@ class DeltaBot(object):
                 self.rescan_comments(message.body)
 
             elif command == "reset":
-                self.scanned_comments.clear()
+                self.before.clear()
 
             elif command == "stop":
                 self.reddit.send_message("/r/" + self.config.subreddit,
@@ -444,34 +437,31 @@ class DeltaBot(object):
                 message.mark_as_read()
                 os._exit(1)
 
-    def rescan_comment(self, bots_comment, orig_comment, awardees_comment):
+
+    def rescan_comment(self, bots_comment):
         """Rescan comments that were too short"""
+        orig_comment = self.reddit.get_info(thing_id=bots_comment.parent_id)
+        awardees_comment = self.reddit.get_info(thing_id=orig_comment.parent_id)
         awardee = awardees_comment.author.name
 
         if (self.string_matches_message(bots_comment.body, 'too_little_text',
                                         awardee)
                 and not self.is_comment_too_short(orig_comment)
-                and not self.is_parent_commenter_author(orig_comment, awardees_comment)
-                and not self.points_already_awarded_to_ancestor(orig_comment, awardees_comment)):
+                and not self.is_parent_commenter_author(orig_comment)
+                and not self.points_already_awarded_to_ancestor(orig_comment)):
             self.award_points(awardee, orig_comment)
             message = self.get_message('confirmation') % (
                           awardee, self.config.subreddit, awardee
                           )
             bots_comment.edit(message).distinguish()
 
-    # Keeps side effects out of rescan_comment to make testing easier
-    def rescan_comment_wrapper(self, bots_comment):
-        orig_comment = self.reddit.get_info(thing_id=bots_comment.parent_id)
-        awardees_comment = self.reddit.get_info(thing_id=orig_comment.parent_id)
-
-        self.rescan_comment(bots_comment, orig_comment, awardees_comment)
 
     def rescan_comments(self, message_body):
         ids = re.findall(self.comment_id_regex, message_body)
         for id in ids:
             comment = self.reddit.get_info(thing_id='t1_%s' % id)
             if type(comment) is praw.objects.Comment:
-                self.rescan_comment_wrapper(comment)
+                self.rescan_comment(comment)
 
 
     def scan_comment_reply(self, comment):
@@ -485,12 +475,12 @@ class DeltaBot(object):
                                 or self.is_moderator(comment.author.name)))
 
         if valid_commenter:
-            self.rescan_comment_wrapper(bots_comment)
+            self.rescan_comment(bots_comment)
 
 
     def scan_inbox(self):
         """ Scan a given list of messages for commands. If no list arg,
-        then get newest comments from the inbox. """
+then get newest comments from the inbox. """
         logging.info("Scanning inbox")
 
         messages = self.reddit.get_unread(unset_has_mail=True)
@@ -543,6 +533,11 @@ class DeltaBot(object):
         self.subreddit.update_settings(description=new_desc)
         self.changes_made = False
 
+### def update_link_flair(self):
+  ###   for i in self.record_of_current_submissions:
+	###	self.reddit.select_flair(i,flair_text=str(number_of_deltas_in_each_submission[i.link_id])+ 'deltas in this thread',flair_template_id='')
+###		self.record_of_current_submissions[comment.link_id]=0
+###		self.number_of_deltas_in_each_submission[comment.link_id]+=1
 
     def get_top_ten_scores(self):
         """ Get a list of the top 10 scores. """
@@ -565,7 +560,8 @@ class DeltaBot(object):
                 'flair_text': self.config.flair['point_text'] % value['score']
             })
         score_list = sorted(score_list, key=flair_sorter)
-        score_list.reverse()
+        score_list.reverse()+
+
         while len(score_list) < 10:
             score_list.append({'user': 'none', 'flair_text': 'no score'})
         return score_list[0:10]
@@ -575,9 +571,9 @@ class DeltaBot(object):
         logging.info("Updating wiki")
         """ Update wiki page of person earning the delta
 
-            Note: comment passed in is the comment awarding the delta,
-            parent comment is the one earning the delta
-        """
+Note: comment passed in is the comment awarding the delta,
+parent comment is the one earning the delta
+"""
         comment_url = comment.permalink
         submission_url = comment.submission.permalink
         submission_title = comment.submission.title
@@ -632,7 +628,7 @@ class DeltaBot(object):
                     )
 
                 # insert link to new delta
-                new_link += "\n    1. [Awarded by /u/%s](%s) on %s/%s/%s" % (
+                new_link += "\n 1. [Awarded by /u/%s](%s) on %s/%s/%s" % (
                     awarder_name, comment_url + "?context=2",
                     today.month, today.day, today.year
                     )
@@ -647,7 +643,7 @@ class DeltaBot(object):
                 # the comment awarding it
                 # "(1)" is the number of deltas earned from that comment
                 # (1 because this is the first delta the user has earned)
-                add_link = "\n\n* [%s](%s) (1)\n    1. [Awarded by /u/%s](%s) on %s/%s/%s" % (submission_title,
+                add_link = "\n\n* [%s](%s) (1)\n 1. [Awarded by /u/%s](%s) on %s/%s/%s" % (submission_title,
               submission_url,
               awarder_name,
               comment_url + "?context=2",
@@ -674,7 +670,7 @@ class DeltaBot(object):
             # "?context=2" means link shows comment earning the delta and the comment awarding it
             # "(1)" is the number of deltas earned from that comment
             # (1 because this is the first delta the user has earned)
-            add_link = "\n\n* [%s](%s) (1)\n    1. [Awarded by /u/%s](%s) on %s/%s/%s" % (submission_title,
+            add_link = "\n\n* [%s](%s) (1)\n 1. [Awarded by /u/%s](%s) on %s/%s/%s" % (submission_title,
           submission_url,
           awarder_name,
           comment_url + "?context=2",
@@ -718,10 +714,9 @@ class DeltaBot(object):
     def go(self):
         """ Start DeltaBot. """
         self.running = True
-        reset_counter = 0
         while self.running:
-            old_comment_id = self.scanned_comments[-1] if self.scanned_comments else None
-            logging.info("Starting iteration at %s" % old_comment_id or "None")
+            old_before_id = self.before[-1] if self.before else None
+            logging.info("Starting iteration at %s" % old_before_id or "None")
 
             try:
                 self.scan_inbox()
@@ -729,23 +724,18 @@ class DeltaBot(object):
                 self.scan_comments()
                 if self.changes_made:
                     self.update_scoreboard()
+###		    self.update_link_flair()
             except:
                 print "Exception in user code:"
                 print '-'*60
                 traceback.print_exc(file=sys.stdout)
                 print '-'*60
 
-            if self.scanned_comments and old_comment_id is not self.scanned_comments[-1]:
+            if self.before and old_before_id is not self.before[-1]:
                 write_saved_id(self.config.last_comment_filename,
-                               self.scanned_comments[-1])
+                               self.before[-1])
 
-            logging.info("Iteration complete at %s" % (self.scanned_comments[-1] if
-                                                       self.scanned_comments else "None"))
-            reset_counter = reset_counter + 1
-            print "Reset Counter at %s." % reset_counter
-            print "When this reaches 10, the script will clear its history."
-            if reset_counter == 10:
-              self.scanned_comments.clear()
-              reset_counter = 0
+            logging.info("Iteration complete at %s" % (self.before[-1] if
+                                                       self.before else "None"))
             logging.info("Sleeping for %s seconds" % self.config.sleep_time)
             time.sleep(self.config.sleep_time)
